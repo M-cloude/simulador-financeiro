@@ -1,350 +1,50 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rápido Transportes</title>
-    <link rel="stylesheet" href="style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script> 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Financeiro - Cadastro</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <div id="login-screen" class="login-container">
-        <div class="login-card">
-            <h2>Bem-vindo à Rápido Transportes</h2>
-            <form id="login-form">
-                <div class="input-group">
-                    <label for="username">Usuário:</label>
-                    <input type="text" id="username" placeholder="Insira qualquer valor para teste" required>
-                </div>
-                <div class="input-group">
-                    <label for="password">Senha:</label>
-                    <input type="password" id="password" placeholder="Insira qualquer valor para teste" required>
-                </div>
-                <button type="submit" class="login-btn">Entrar</button>
-                <p id="login-error" class="error-message"></p>
-            </form>
-        </div>
-    </div>
 
     <header class="header">
-        <h1>Rápido Transportes</h1>
-        <button id="logout-btn" class="logout-btn">Sair</button>
+        <a href="#" class="back-link" style="visibility: hidden;">&lt; Voltar</a>
+        <h1>Simulador Financeiro</h1>
     </header>
 
-    <main class="main-content-lateral">
-        <div class="menu-section">
-            <div class="menu">
-                <h2>Rápido Transportes</h2>
-                <ul>
-                    <li><a href="#" class="menu-item active" data-content="notas-fiscais">Notas Fiscais</a></li>
-                    <li><a href="#" class="menu-item" data-content="faturamento">Faturamento</a></li>
-                    <li><a href="#" class="menu-item" data-content="performance-veiculos">Performance Veículos</a></li>
-                    <li><a href="#" class="menu-item" data-content="pedagios">Pedágios</a></li>
-                    <li><a href="#" class="menu-item" data-content="clientes">Clientes</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="content-section">
-            <div id="notas-fiscais-content" class="content-panel active">
-                <h2 class="section-title">Notas Fiscais</h2>
-                <div class="dashboard-card performance-container">
-                    <form id="nf-form" class="input-form">
-                        <h3>Registrar Nota</h3>
-                        <div class="input-group">
-                            <label for="client-name-nf">Nome do Cliente:</label>
-                            <input type="text" id="client-name-nf" placeholder="Nome do Cliente" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="barcode-nf">Código de Barras da NF:</label>
-                            <input type="text" id="barcode-nf" placeholder="Escaneie ou digite o código de barras" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="value-nf">Valor da Nota (R$):</label>
-                            <input type="number" id="value-nf" placeholder="Digite o valor" step="0.01" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="type-nf">Tipo de Nota:</label>
-                            <select id="type-nf" required>
-                                <option value="" disabled selected>Selecione o tipo</option>
-                                <option value="frete">Frete</option>
-                                <option value="servico">Serviço</option>
-                                <option value="devolucao">Devolução</option>
-                            </select>
-                        </div>
-                        <div class="button-group">
-                            <button type="submit" class="calculate-btn">Adicionar Nota</button>
-                        </div>
-                    </form>
-                    <div class="dashboard-results">
-                        <h3>Resumo por Cliente</h3>
-                        <div id="nf-results">
-                            <p>Cliente Atual: <span id="current-client">Nenhum</span></p>
-                            <p>Tipo de Nota: <span id="nf-type">N/A</span></p>
-                            <p>Total de Notas: <span id="nf-count">0</span></p>
-                            <p>Valor Total: R$ <span id="nf-totais">0.00</span></p>
-                            <p>Total de Impostos: R$ <span id="nf-taxes">0.00</span></p>
-                        </div>
-                        <div class="nf-history-container">
-                            <h3>Histórico de Notas</h3>
-                            <div class="button-group">
-                                <button type="button" class="calculate-btn" id="download-nf-excel">Baixar Excel</button>
-                            </div>
-                            <table id="nf-table" class="client-table">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Cliente</th>
-                                        <th>Valor (R$)</th>
-                                        <th>Tipo</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
+    <main class="main-content-home">
+        <div class="auth-container">
+            <div class="auth-image-side">
+                <div class="intro-text-overlay">
+                    <h2>Seja bem-vindo(a) ao seu simulador financeiro pessoal.</h2>
+                    <p>Gerencie suas finanças de forma inteligente e tome as melhores decisões para o seu futuro.</p>
                 </div>
             </div>
-
-            <div id="faturamento-content" class="content-panel">
-                <div class="dashboard-card">
-                    <h2>Faturamento</h2>
-                    <p>O faturamento é o valor total das notas menos os impostos. **(Este cálculo considera uma taxa de 10% sobre o valor das notas fiscais)**</p>
-                    
-                    <div class="chart-box-faturamento">
-                        <canvas id="faturamento-liquido-chart"></canvas>
-                        <div class="chart-info">
-                            <h3>Faturamento Líquido</h3>
-                            <p>Valor Total: R$ <span id="faturamento-valor">0.00</span></p>
-                        </div>
+            <div class="auth-form-side">
+                <h3>Cadastre-se para continuar</h3>
+                <form class="signup-form">
+                    <div class="form-group">
+                        <label for="nome">Nome Completo</label>
+                        <input type="text" id="nome" name="nome" required>
                     </div>
-                    <div class="faturamento-charts-container">
-                        <div class="chart-box">
-                            <canvas id="frete-chart"></canvas>
-                            <div class="chart-info">
-                                <h3>Resumo de Fretes</h3>
-                                <p>Total de Notas: <span id="frete-count">0</span></p>
-                                <p>Valor Total: R$ <span id="frete-value">0.00</span></p>
-                            </div>
-                        </div>
-                        <div class="chart-box">
-                            <canvas id="servico-chart"></canvas>
-                            <div class="chart-info">
-                                <h3>Resumo de Serviços</h3>
-                                <p>Total de Notas: <span id="servico-count">0</span></p>
-                                <p>Valor Total: R$ <span id="servico-value">0.00</span></p>
-                            </div>
-                        </div>
-                        <div class="chart-box">
-                            <canvas id="devolucao-chart"></canvas>
-                            <div class="chart-info">
-                                <h3>Resumo de Devoluções</h3>
-                                <p>Total de Notas: <span id="devolucao-count">0</span></p>
-                                <p>Valor Total: R$ <span id="devolucao-value">0.00</span></p>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="cidade">Cidade</label>
+                        <input type="text" id="cidade" name="cidade" value="Uberaba" required>
                     </div>
-                </div>
-            </div>
-
-            <div id="performance-veiculos-content" class="content-panel">
-                <h2 class="section-title">
-                    <img src="caminhao.gif" alt="Caminhão" style="width: 80px; height: auto; vertical-align: middle; margin-right: 10px;" />
-                    Performance Veículos
-                </h2>
-                <div class="dashboard-card performance-container">
-                    <form id="vehicle-form" class="input-form">
-                        <h3>Calcular Desempenho</h3>
-                        <div class="input-group">
-                            <label for="code-travel">Código da Viagem:</label>
-                            <input type="text" id="code-travel" placeholder="Gerado automaticamente" disabled />
-                        </div>
-                        <div class="input-group">
-                            <label for="vehicle">Veículo:</label>
-                            <input type="text" id="vehicle" placeholder="Ex: Mercedes-Benz Atron 2324" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="vehicle-condition">Condições do Veículo:</label>
-                            <select id="vehicle-condition" required>
-                                <option value="" disabled selected>Selecione uma opção</option>
-                                <option value="1">1 - Excelente</option>
-                                <option value="2">2 - Regular</option>
-                                <option value="3">3 - Ruim</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="municipio">Município/Estado:</label>
-                            <input type="text" id="municipio" placeholder="Ex: São Paulo/SP" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="distance">Distância Percorrida (km):</label>
-                            <input type="number" id="distance" placeholder="Ex: 500" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="fuel-liters">Litros de Combustível Consumidos:</label>
-                            <input type="number" id="fuel-liters" placeholder="Ex: 100" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="fuel-price">Preço do Combustível por Litro (R$):</label>
-                            <input type="number" id="fuel-price" placeholder="Ex: 5.50" step="0.01" required />
-                        </div>
-                        <div class="button-group">
-                            <button type="submit" class="calculate-btn">Calcular</button>
-                        </div>
-                    </form>
-                    <div class="dashboard-results">
-                        <h3>Resultados</h3>
-                        <div class="kpi-container">
-                            <div class="kpi-box">
-                                <span class="kpi-label">Custo de Combustível</span>
-                                <span class="kpi-value" id="fuel-cost">R$ 0,00</span>
-                            </div>
-                            <div class="kpi-box">
-                                <span class="kpi-label">Eficiência (km/L)</span>
-                                <span class="kpi-value" id="fuel-efficiency">0,00 km/L</span>
-                            </div>
-                            <div class="kpi-box">
-                                <span class="kpi-label">Custo por km</span>
-                                <span class="kpi-value" id="cost-per-km">R$ 0,00</span>
-                            </div>
-                        </div>
-                        <div class="charts-container">
-                            <div class="chart-box">
-                                <canvas id="vehicle-comparison-chart"></canvas>
-                            </div>
-                            <div class="chart-box">
-                                <canvas id="cost-breakdown-chart"></canvas>
-                            </div>
-                        </div>
-                        <div class="vehicle-history-container">
-                            <h3>Histórico de Viagens</h3>
-                            <div class="button-group">
-                                <button type="button" class="calculate-btn" id="download-vehicle-excel">Baixar Excel</button>
-                            </div>
-                            <table id="vehicle-table" class="client-table">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Veículo</th>
-                                        <th>Distância</th>
-                                        <th>Eficiência</th>
-                                        <th>Custo Total</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
+                    <div class="form-group">
+                        <label for="idade">Idade</label>
+                        <input type="number" id="idade" name="idade" required>
                     </div>
-                </div>
-            </div>
-
-            <div id="pedagios-content" class="content-panel">
-                <h2 class="section-title">Pedágios</h2>
-                <div class="dashboard-card performance-container">
-                    <form id="toll-form" class="input-form">
-                        <h3>Registrar Pedágio</h3>
-                        <div class="input-group">
-                            <label for="toll-value">Valor do Pedágio (R$):</label>
-                            <input type="number" id="toll-value" placeholder="Digite o valor" step="0.01" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="toll-date">Data:</label>
-                            <input type="date" id="toll-date" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="toll-vehicle">Veículo:</label>
-                            <input type="text" id="toll-vehicle" placeholder="Ex: Mercedes-Benz Atron 2324" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="toll-code-travel">Código da Viagem:</label>
-                            <input type="text" id="toll-code-travel" placeholder="Vincule a uma viagem" required />
-                        </div>
-                        <div class="button-group">
-                            <button type="submit" class="calculate-btn">Adicionar Pedágio</button>
-                        </div>
-                    </form>
-                    <div class="dashboard-results">
-                        <h3>Histórico de Pedágios</h3>
-                        <div class="toll-list-container">
-                            <div class="button-group">
-                                <button type="button" class="calculate-btn" id="download-toll-excel">Baixar Excel</button>
-                            </div>
-                            <p>Total de Pedágios: R$ <span id="toll-total">0.00</span></p>
-                            <table id="toll-table" class="client-table">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Veículo</th>
-                                        <th>Viagem</th>
-                                        <th>Valor (R$)</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
+                    <div class="form-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" name="email" required>
                     </div>
-                </div>
-            </div>
-
-            <div id="clientes-content" class="content-panel">
-                <h2 class="section-title">Clientes</h2>
-                <div class="dashboard-card performance-container">
-                    <form id="client-form" class="input-form">
-                        <h3>Adicionar Novo Cliente</h3>
-                        <div class="input-group">
-                            <label for="client-name">Nome:</label>
-                            <input type="text" id="client-name" placeholder="Nome Completo ou Empresa" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="client-cnpj">CNPJ:</label>
-                            <input type="text" id="client-cnpj" placeholder="00.000.000/0000-00" required />
-                        </div>
-                        <div class="input-group">
-                            <label for="client-contact">Contato:</label>
-                            <input type="text" id="client-contact" placeholder="Telefone ou E-mail" required />
-                        </div>
-                        <div class="button-group">
-                            <button type="submit" class="calculate-btn">Adicionar Cliente</button>
-                        </div>
-                    </form>
-                    <div class="dashboard-results">
-                        <h3>Lista de Clientes</h3>
-                        <div class="client-list-container">
-                            <div class="button-group">
-                                <button type="button" class="calculate-btn" id="download-client-excel">Baixar Excel</button>
-                            </div>
-                            <table id="client-table" class="client-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>CNPJ</th>
-                                        <th>Contato</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                    <a href="simulations.html" class="btn-primary">Acessar o Simulador</a>
+                </form>
             </div>
         </div>
     </main>
 
-    <div class="footer">
-        <p>&copy; 2025 Luis Fábio Parreira. Todos os direitos reservados.</p>
-        <p>
-            GitHub: <a href="https://github.com/M-cloude" target="_blank">M-cloude</a> | 
-            LinkedIn: <a href="https://www.linkedin.com/in/lu%C3%ADs-f%C3%A1bio-parreira-1b78a9182/" target="_blank">Luis Fábio Parreira</a>
-        </p>
-    </div>
-
-    <script src="script.js"></script>
 </body>
 </html>

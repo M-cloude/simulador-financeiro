@@ -1,656 +1,546 @@
-// ==========================================================
-// VARIÁVEIS GLOBAIS
-// ==========================================================
-let notasFiscais = [];
-let faturamentoMensal = {};
-let clientes = [];
-let pedagios = [];
-let viagens = [];
-
-// ==========================================================
-// LÓGICA DE AUTENTICAÇÃO (NOVO)
-// ==========================================================
 document.addEventListener('DOMContentLoaded', () => {
-    const loginScreen = document.getElementById('login-screen');
-    const loginForm = document.getElementById('login-form');
-    const logoutBtn = document.getElementById('logout-btn');
-    
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-
-    // Verifica se o usuário já está logado
-    if (isAuthenticated === 'true') {
-        loginScreen.classList.add('hidden');
-        carregarDadosIniciais();
-    } else {
-        loginScreen.classList.remove('hidden');
-    }
-
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const errorMessage = document.getElementById('login-error');
-
-        // Lógica para permitir qualquer valor (se não estiverem vazios)
-        if (username && password) {
-            localStorage.setItem('isAuthenticated', 'true');
-            errorMessage.style.display = 'none';
-            loginScreen.classList.add('hidden');
-            carregarDadosIniciais();
-        } else {
-            errorMessage.textContent = 'Por favor, preencha ambos os campos.';
-            errorMessage.style.display = 'block';
-        }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('isAuthenticated');
-        location.reload(); // Recarrega a página para mostrar a tela de login novamente
-    });
-
-    // Lógica de navegação da barra lateral
     const menuItems = document.querySelectorAll('.menu-item');
-    const contentPanels = document.querySelectorAll('.content-panel');
-
+    
     menuItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
+            const simulationType = e.target.getAttribute('data-simulation');
             
-            menuItems.forEach(i => i.classList.remove('active'));
-            contentPanels.forEach(p => p.classList.remove('active'));
+            menuItems.forEach(mi => mi.classList.remove('active'));
+            e.target.classList.add('active');
 
-            item.classList.add('active');
-
-            const contentId = item.getAttribute('data-content');
-            const targetPanel = document.getElementById(`${contentId}-content`);
-
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            }
+            loadSimulationContent(simulationType);
         });
     });
+
+    const defaultItem = document.querySelector('.menu-item[data-simulation="emprestimo"]');
+    if (defaultItem) {
+        defaultItem.classList.add('active');
+    }
+    loadSimulationContent('emprestimo');
 });
 
-// ==========================================================
-// FUNÇÕES DE DADOS (CARREGAMENTO, SALVAMENTO, ETC.)
-// ==========================================================
-
-function salvarDados() {
-    localStorage.setItem('notasFiscais', JSON.stringify(notasFiscais));
-    localStorage.setItem('faturamentoMensal', JSON.stringify(faturamentoMensal));
-    localStorage.setItem('clientes', JSON.stringify(clientes));
-    localStorage.setItem('pedagios', JSON.stringify(pedagios));
-    localStorage.setItem('viagens', JSON.stringify(viagens));
+function formatInputNumber(input) {
+    let value = input.value.replace(/\D/g, '');
+    value = value.replace(/^0+/, '');
+    if (value === '') {
+        input.value = '';
+        return;
+    }
+    let formattedValue = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0 }).format(value);
+    input.value = formattedValue;
 }
 
-function carregarDadosIniciais() {
-    const notasSalvas = localStorage.getItem('notasFiscais');
-    const faturamentoSalvo = localStorage.getItem('faturamentoMensal');
-    const clientesSalvos = localStorage.getItem('clientes');
-    const pedagiosSalvos = localStorage.getItem('pedagios');
-    const viagensSalvos = localStorage.getItem('viagens');
-
-    if (notasSalvas) {
-        notasFiscais = JSON.parse(notasSalvas);
-        renderizarNotasFiscais();
+function formatarResultado(valor) {
+    if (typeof valor !== 'number' || isNaN(valor)) {
+        return "R$ 0,00";
     }
-    if (faturamentoSalvo) {
-        faturamentoMensal = JSON.parse(faturamentoSalvo);
-    }
-    if (clientesSalvos) {
-        clientes = JSON.parse(clientesSalvos);
-        renderizarTabelaClientes();
-    }
-    if (pedagiosSalvos) {
-        pedagios = JSON.parse(pedagiosSalvos);
-        renderizarPedagios();
-    }
-    if (viagensSalvos) {
-        viagens = JSON.parse(viagensSalvos);
-        gerarGraficoComparativoVeiculos();
-        gerarGraficoCustoVeiculos();
-        renderizarTabelaViagens();
-    }
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor);
 }
 
-// ==========================================================
-// FUNÇÕES DE SEÇÃO
-// ==========================================================
+function unformatNumber(formattedNumber) {
+    if (typeof formattedNumber !== 'string') return formattedNumber;
+    return parseFloat(formattedNumber.replace(/\./g, '').replace(/,/g, '.'));
+}
 
-// Notas Fiscais
-document.getElementById('nf-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const clientNameNF = document.getElementById('client-name-nf').value;
-    const barcodeNF = document.getElementById('barcode-nf').value;
-    const valueNF = parseFloat(document.getElementById('value-nf').value);
-    const typeNF = document.getElementById('type-nf').value; 
+function generateGuidance(simulationType, results) {
+    const guidanceTextElement = document.getElementById('guidance-text');
+    let guidanceMessage = '';
+
+    if (simulationType === 'emprestimo') {
+        const { valorEmprestimo, parcela, totalJuros } = results;
+        guidanceMessage = `
+            Olá! De acordo com a sua simulação de empréstimo, o valor da parcela mensal é de **R$ ${formatarResultado(parcela)}** e o total de juros pagos ao final do contrato será de **R$ ${formatarResultado(totalJuros)}**.
+            
+            **Dicas importantes:**
+            * Compare a parcela com sua renda mensal. O ideal é que as parcelas não comprometam mais que 30% da sua renda.
+            * O montante de juros é o custo real do seu empréstimo. Avalie se esse valor está dentro do seu planejamento.
+            * Pesquise e negocie as taxas de juros, pois pequenas diferenças podem gerar uma grande economia a longo prazo.
+        `;
+    } else if (simulationType === 'habitacional') {
+        const { valorFinanciado, parcela, totalJuros } = results;
+        guidanceMessage = `
+            Com base na sua simulação habitacional, a parcela mensal é de **R$ ${formatarResultado(parcela)}** e o total de juros ao longo do tempo é de **R$ ${formatarResultado(totalJuros)}**.
+            
+            **Dicas importantes:**
+            * Financiamentos de longo prazo tendem a acumular um alto valor em juros. Considere se é possível amortizar o saldo devedor para reduzir o total pago.
+            * Sua entrada é de **R$ ${formatarResultado(valorFinanciado)}**. Entradas maiores diminuem o valor financiado e o total de juros.
+            * Lembre-se de que além da parcela, você terá custos adicionais como seguros e taxas administrativas.
+        `;
+    } else if (simulationType === 'renda') {
+        const { rendaMensal, gastosTotais, superavit } = results;
+        const superavitText = superavit >= 0 ? `superávit (sobra)` : `déficit (falta)`;
+        const superavitColor = superavit >= 0 ? 'uma situação financeira saudável' : 'uma situação que exige atenção';
+        const superavitAmount = Math.abs(superavit);
+
+        guidanceMessage = `
+            Sua análise de renda indica um **${superavitText}** de **R$ ${formatarResultado(superavitAmount)}**. Isso significa ${superavitColor}.
+            
+            **Dicas importantes:**
+            * **Se você tem superávit:** Use o valor excedente para criar uma reserva de emergência ou para investir e fazer o seu dinheiro crescer.
+            * **Se você tem déficit:** É essencial revisar seus gastos e encontrar maneiras de reduzir despesas variáveis. Considere também a possibilidade de aumentar sua renda.
+            * Mantenha o controle das suas finanças. Um planejamento detalhado é a chave para a estabilidade e o crescimento financeiro.
+        `;
+    }
+    guidanceTextElement.innerHTML = guidanceMessage;
+}
+
+function loadSimulationContent(simulationType) {
+    const simulationContentDiv = document.getElementById('simulation-content');
+    simulationContentDiv.innerHTML = ''; 
+
+    if (simulationType === 'emprestimo') {
+        const emprestimoHTML = `
+            <div class="dashboard-container">
+                <header class="main-header">
+                    <h2>Simulação de Empréstimo</h2>
+                </header>
+                <div class="dashboard-cards-container">
+                    <div class="card input-card">
+                        <p class="card-title">Valor do Empréstimo (R$)</p>
+                        <input type="text" id="valor-emprestimo" placeholder="Ex: 50.000,00" oninput="formatInputNumber(this)">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Prazo (meses)</p>
+                        <input type="number" id="prazo-meses" placeholder="Ex: 24">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Taxa de Juros Anual (%)</p>
+                        <input type="number" id="taxa-juros" placeholder="Ex: 10.5">
+                    </div>
+                </div>
+                <button id="calcular-emprestimo" class="btn-calculate">Calcular</button>
+                <div class="dashboard-cards-container">
+                    <div class="card result-card">
+                        <p class="card-title">Valor da Parcela</p>
+                        <h3 id="resultado-parcela">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Total Pago</p>
+                        <h3 id="resultado-total-pago">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Total de Juros</p>
+                        <h3 id="resultado-total-juros">R$ 0,00</h3>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h2>Gráficos de Análise</h2>
+                    <div class="chart-group-container">
+                        <div class="chart-item">
+                            <canvas id="amortizacao-grafico"></canvas>
+                        </div>
+                        <div class="chart-item">
+                            <canvas id="juros-pizza-grafico"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        simulationContentDiv.innerHTML = emprestimoHTML;
+        const btnCalcular = document.getElementById('calcular-emprestimo');
+        if (btnCalcular) {
+            btnCalcular.addEventListener('click', calcularEmprestimo);
+        }
+
+    } else if (simulationType === 'habitacional') {
+        const habitacionalHTML = `
+            <div class="dashboard-container">
+                <header class="main-header">
+                    <h2>Simulação Habitacional</h2>
+                </header>
+                <div class="dashboard-cards-container">
+                    <div class="card input-card">
+                        <p class="card-title">Valor do Imóvel (R$)</p>
+                        <input type="text" id="valorImovel" name="valorImovel" required oninput="formatInputNumber(this)" placeholder="Ex: 500.000,00">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Valor da Entrada (R$)</p>
+                        <input type="text" id="entrada" name="entrada" required oninput="formatInputNumber(this)" placeholder="Ex: 100.000,00">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Prazo (anos)</p>
+                        <input type="number" id="prazoAnos" name="prazoAnos" required placeholder="Ex: 30">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Juros anuais (%)</p>
+                        <input type="number" id="jurosAnuais" name="jurosAnuais" required placeholder="Ex: 8.5">
+                    </div>
+                </div>
+                <button id="simular-habitacional" class="btn-calculate">Simular</button>
+                <div class="dashboard-cards-container">
+                    <div class="card result-card">
+                        <p class="card-title">Valor da Parcela</p>
+                        <h3 id="resultado-parcela-hab">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Total Pago</p>
+                        <h3 id="resultado-total-pago-hab">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Total de Juros</p>
+                        <h3 id="resultado-total-juros-hab">R$ 0,00</h3>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h2>Gráficos de Análise</h2>
+                    <div class="chart-group-container">
+                        <div class="chart-item">
+                            <canvas id="amortizacao-grafico-hab"></canvas>
+                        </div>
+                        <div class="chart-item">
+                            <canvas id="proporcao-pizza-grafico"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        simulationContentDiv.innerHTML = habitacionalHTML;
+        
+        const btnSimular = document.getElementById('simular-habitacional');
+        if (btnSimular) {
+            btnSimular.addEventListener('click', calcularHabitacional);
+        }
+
+    } else if (simulationType === 'renda') {
+        const rendaHTML = `
+            <div class="dashboard-container">
+                <header class="main-header">
+                    <h2>Simulação de Renda Pessoal</h2>
+                </header>
+                <div class="dashboard-cards-container">
+                    <div class="card input-card">
+                        <p class="card-title">Renda Mensal Líquida (R$)</p>
+                        <input type="text" id="rendaMensal" name="rendaMensal" required oninput="formatInputNumber(this)" placeholder="Ex: 5.000,00">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Dívidas Fixas (R$)</p>
+                        <input type="text" id="dividasFixas" name="dividasFixas" required oninput="formatInputNumber(this)" placeholder="Ex: 1.500,00">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Dívidas Variáveis (R$)</p>
+                        <input type="text" id="dividasVariaveis" name="dividasVariaveis" required oninput="formatInputNumber(this)" placeholder="Ex: 800,00">
+                    </div>
+                    <div class="card input-card">
+                        <p class="card-title">Investimento (Projetos Pessoais) (R$)</p>
+                        <input type="text" id="investimento" name="investimento" required oninput="formatInputNumber(this)" placeholder="Ex: 500,00">
+                    </div>
+                </div>
+                <button id="calcular-renda" class="btn-calculate">Calcular</button>
+                <div class="dashboard-cards-container">
+                    <div class="card result-card">
+                        <p class="card-title">Renda Mensal</p>
+                        <h3 id="resultado-renda">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Total de Gastos</p>
+                        <h3 id="resultado-gastos">R$ 0,00</h3>
+                    </div>
+                    <div class="card result-card">
+                        <p class="card-title">Superávit/Déficit</p>
+                        <h3 id="resultado-superavit">R$ 0,00</h3>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h2>Análise Financeira</h2>
+                    <div class="chart-group-container">
+                        <div class="chart-item">
+                            <canvas id="renda-bar-grafico"></canvas>
+                        </div>
+                        <div class="chart-item">
+                            <canvas id="renda-pizza-grafico"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        simulationContentDiv.innerHTML = rendaHTML;
+        
+        const btnCalcularRenda = document.getElementById('calcular-renda');
+        if (btnCalcularRenda) {
+            btnCalcularRenda.addEventListener('click', calcularRenda);
+        }
+    }
     
-    if (clientNameNF && barcodeNF && !isNaN(valueNF) && typeNF) {
-        adicionarNotaFiscal(clientNameNF, barcodeNF, valueNF, typeNF);
-        this.reset();
+    // **Ajuste importante: Adicionar os event listeners após o conteúdo ser carregado**
+    const guidanceBtn = document.getElementById('show-guidance-btn');
+    const closeBtn = document.getElementById('close-guidance-btn');
+    const guidanceModal = document.getElementById('guidance-modal');
+
+    if (guidanceBtn) {
+        guidanceBtn.addEventListener('click', () => {
+            guidanceModal.classList.add('show');
+        });
     }
-});
 
-function adicionarNotaFiscal(cliente, codigoNF, valor, tipo) {
-    const nf = {
-        id: Date.now(),
-        cliente: cliente,
-        codigo: codigoNF,
-        valor: valor,
-        tipo: tipo, 
-        data: new Date().toISOString().slice(0, 10)
-    };
-    notasFiscais.push(nf);
-    salvarDados();
-    renderizarNotasFiscais();
-    calcularFaturamento();
-    atualizarGraficosFaturamento();
-    alert('Nota fiscal adicionada com sucesso!');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            guidanceModal.classList.remove('show');
+        });
+    }
 }
 
-function removerNotaFiscal(id) {
-    notasFiscais = notasFiscais.filter(nf => nf.id !== id);
-    salvarDados();
-    renderizarNotasFiscais();
-    calcularFaturamento();
-    atualizarGraficosFaturamento();
+let meuGraficoEmprestimo, meuGraficoHabitacional, meuGraficoRendaBar, meuGraficoRendaPizza, meuGraficoPizzaEmprestimo, meuGraficoPizzaHabitacional;
+
+function calcularEmprestimo() {
+    const valorEmprestimo = unformatNumber(document.getElementById('valor-emprestimo').value);
+    const taxaJurosAnual = parseFloat(document.getElementById('taxa-juros').value);
+    const prazoMeses = parseInt(document.getElementById('prazo-meses').value);
+    if (isNaN(valorEmprestimo) || isNaN(taxaJurosAnual) || isNaN(prazoMeses) || valorEmprestimo <= 0 || prazoMeses <= 0) {
+        alert('Por favor, preencha todos os campos com valores válidos.');
+        return;
+    }
+    const taxaJurosMensal = (taxaJurosAnual / 100) / 12;
+    const parcela = valorEmprestimo * (taxaJurosMensal / (1 - Math.pow(1 + taxaJurosMensal, -prazoMeses)));
+    let saldoDevedor = valorEmprestimo;
+    const dadosGrafico = [];
+    let totalJuros = 0;
+    for (let i = 0; i < prazoMeses; i++) {
+        const jurosMes = saldoDevedor * taxaJurosMensal;
+        const amortizacaoMes = parcela - jurosMes;
+        saldoDevedor -= amortizacaoMes;
+        totalJuros += jurosMes;
+        dadosGrafico.push({
+            mes: i + 1,
+            saldo: saldoDevedor
+        });
+    }
+    const totalPago = parcela * prazoMeses;
+    exibirResultadosEmprestimo(parcela, totalPago, totalJuros);
+    criarGraficoAmortizacaoEmprestimo(dadosGrafico);
+    criarGraficoPizzaEmprestimo(valorEmprestimo, totalJuros);
+    generateGuidance('emprestimo', { valorEmprestimo, parcela, totalJuros });
 }
 
-function renderizarNotasFiscais() {
-    let total = 0;
-    let impostos = 0;
-    let count = 0;
-    let tipoNF = 'N/A';
-
-    notasFiscais.forEach(nf => {
-        total += nf.valor;
-        impostos += nf.valor * 0.10;
-        count++;
-        tipoNF = nf.tipo;
-    });
-
-    document.getElementById('nf-count').textContent = count;
-    document.getElementById('nf-totais').textContent = total.toFixed(2);
-    document.getElementById('nf-taxes').textContent = impostos.toFixed(2);
-    document.getElementById('nf-type').textContent = tipoNF.charAt(0).toUpperCase() + tipoNF.slice(1);
-    document.getElementById('current-client').textContent = notasFiscais.length > 0 ? notasFiscais[notasFiscais.length - 1].cliente : "Nenhum";
-
-    const tabelaBody = document.getElementById('nf-table').querySelector('tbody');
-    tabelaBody.innerHTML = '';
-    
-    notasFiscais.forEach(nf => {
-        const row = tabelaBody.insertRow();
-        row.insertCell(0).textContent = nf.data;
-        row.insertCell(1).textContent = nf.cliente;
-        row.insertCell(2).textContent = `R$ ${nf.valor.toFixed(2)}`;
-        row.insertCell(3).textContent = nf.tipo.charAt(0).toUpperCase() + nf.tipo.slice(1);
-
-        const acoesCell = row.insertCell(4);
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remover';
-        removeButton.classList.add('remove-btn');
-        removeButton.onclick = () => removerNotaFiscal(nf.id);
-        acoesCell.appendChild(removeButton);
-    });
+function exibirResultadosEmprestimo(parcela, totalPago, totalJuros) {
+    document.getElementById('resultado-parcela').textContent = `R$ ${formatarResultado(parcela)}`;
+    document.getElementById('resultado-total-pago').textContent = `R$ ${formatarResultado(totalPago)}`;
+    document.getElementById('resultado-total-juros').textContent = `R$ ${formatarResultado(totalJuros)}`;
 }
 
-// Faturamento
-function calcularFaturamento() {
-    let totalFaturamento = 0;
-    notasFiscais.forEach(nf => {
-        let valorNota = parseFloat(nf.valor);
-        if (nf.tipo !== 'devolucao') {
-            totalFaturamento += valorNota;
-        } else {
-            totalFaturamento -= valorNota;
+function criarGraficoAmortizacaoEmprestimo(dados) {
+    const ctx = document.getElementById('amortizacao-grafico').getContext('2d');
+    if (meuGraficoEmprestimo) {
+        meuGraficoEmprestimo.destroy();
+    }
+    meuGraficoEmprestimo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dados.map(item => `Mês ${item.mes}`),
+            datasets: [{
+                label: 'Saldo Devedor',
+                data: dados.map(item => item.saldo.toFixed(2)),
+                borderColor: '#d66800',
+                backgroundColor: 'rgba(214, 104, 0, 0.2)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'Meses' } },
+                y: { title: { display: true, text: 'Valor (R$)' }, beginAtZero: true }
+            },
+            plugins: { title: { display: true, text: 'Evolução do Saldo Devedor' } }
         }
     });
-
-    const totalImpostos = totalFaturamento * 0.10;
-    const faturamentoLiquido = totalFaturamento - totalImpostos;
-    document.getElementById('faturamento-valor').textContent = faturamentoLiquido.toFixed(2);
-    salvarDados();
 }
 
-function atualizarGraficosFaturamento() {
-    const notasFrete = notasFiscais.filter(nf => nf.tipo === 'frete');
-    const notasServico = notasFiscais.filter(nf => nf.tipo === 'servico');
-    const notasDevolucao = notasFiscais.filter(nf => nf.tipo === 'devolucao');
-    exibirResumoDeNotas('frete', notasFrete);
-    exibirResumoDeNotas('servico', notasServico);
-    exibirResumoDeNotas('devolucao', notasDevolucao);
-    gerarGraficoFaturamentoLiquido();
-    gerarGraficoFaturamentoPorTipo('frete-chart', 'Faturamento de Frete', notasFrete, '#3498db');
-    gerarGraficoFaturamentoPorTipo('servico-chart', 'Faturamento de Serviço', notasServico, '#2ecc71');
-    gerarGraficoFaturamentoPorTipo('devolucao-chart', 'Notas de Devolução', notasDevolucao, '#e74c3c');
-}
-
-function exibirResumoDeNotas(tipo, notas) {
-    const totalNotas = notas.length;
-    const somaValores = notas.reduce((total, nf) => total + nf.valor, 0);
-    document.getElementById(`${tipo}-count`).textContent = totalNotas;
-    document.getElementById(`${tipo}-value`).textContent = somaValores.toFixed(2);
-}
-
-function gerarGraficoFaturamentoLiquido() {
-    const ctx = document.getElementById('faturamento-liquido-chart').getContext('2d');
-    const dadosPorMes = notasFiscais.reduce((acc, nf) => {
-        const mesAno = new Date(nf.data).toISOString().slice(0, 7);
-        let valor = parseFloat(nf.valor);
-        if (nf.tipo !== 'devolucao') {
-            valor = valor * 0.90;
-        } else {
-            valor = valor * -1;
-        }
-        acc[mesAno] = (acc[mesAno] || 0) + valor;
-        return acc;
-    }, {});
-    const labels = Object.keys(dadosPorMes).sort();
-    const data = labels.map(mes => dadosPorMes[mes]);
-    if (window.faturamentoLiquidoChart instanceof Chart) {
-        window.faturamentoLiquidoChart.destroy();
+function criarGraficoPizzaEmprestimo(valorPrincipal, totalJuros) {
+    const ctx = document.getElementById('juros-pizza-grafico').getContext('2d');
+    if (meuGraficoPizzaEmprestimo) {
+        meuGraficoPizzaEmprestimo.destroy();
     }
-    window.faturamentoLiquidoChart = new Chart(ctx, {
+    meuGraficoPizzaEmprestimo = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Valor Principal', 'Total de Juros'],
+            datasets: [{
+                data: [valorPrincipal, totalJuros],
+                backgroundColor: ['#d66800', '#f8d29b']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { title: { display: true, text: 'Proporção Principal vs. Juros' } }
+        }
+    });
+}
+
+function calcularHabitacional() {
+    const valorImovel = unformatNumber(document.getElementById('valorImovel').value);
+    const entrada = unformatNumber(document.getElementById('entrada').value);
+    const prazoAnos = parseInt(document.getElementById('prazoAnos').value);
+    const jurosAnuais = parseFloat(document.getElementById('jurosAnuais').value);
+    if (isNaN(valorImovel) || isNaN(entrada) || isNaN(prazoAnos) || isNaN(jurosAnuais) || valorImovel <= 0 || entrada <= 0 || prazoAnos <= 0 || jurosAnuais < 0) {
+        alert('Por favor, preencha todos os campos com valores válidos.');
+        return;
+    }
+    if (entrada >= valorImovel) {
+        alert('O valor da entrada não pode ser maior ou igual ao valor do imóvel.');
+        return;
+    }
+    const valorFinanciado = valorImovel - entrada;
+    const jurosMensais = (jurosAnuais / 100) / 12;
+    const prazoMeses = prazoAnos * 12;
+    const parcela = valorFinanciado * jurosMensais / (1 - Math.pow(1 + jurosMensais, -prazoMeses));
+    let saldoDevedor = valorFinanciado;
+    const principalData = [];
+    const jurosData = [];
+    let totalJurosPago = 0;
+    const labels = [];
+    for (let i = 1; i <= prazoMeses; i++) {
+        const jurosMes = saldoDevedor * jurosMensais;
+        const amortizacao = parcela - jurosMes;
+        saldoDevedor -= amortizacao;
+        totalJurosPago += jurosMes;
+        principalData.push(amortizacao);
+        jurosData.push(jurosMes);
+        labels.push(`Mês ${i}`);
+    }
+    const totalPago = parcela * prazoMeses;
+    const totalJuros = totalJurosPago;
+    exibirResultadosHabitacional(parcela, totalPago, totalJuros);
+    criarGraficoAmortizacaoHabitacional(labels, principalData, jurosData);
+    criarGraficoPizzaHabitacional(valorFinanciado, totalJuros);
+    generateGuidance('habitacional', { valorFinanciado, parcela, totalJuros });
+}
+
+function exibirResultadosHabitacional(parcela, totalPago, totalJuros) {
+    document.getElementById('resultado-parcela-hab').textContent = `R$ ${formatarResultado(parcela)}`;
+    document.getElementById('resultado-total-pago-hab').textContent = `R$ ${formatarResultado(totalPago)}`;
+    document.getElementById('resultado-total-juros-hab').textContent = `R$ ${formatarResultado(totalJuros)}`;
+}
+
+function criarGraficoAmortizacaoHabitacional(labels, principalData, jurosData) {
+    const ctx = document.getElementById('amortizacao-grafico-hab').getContext('2d');
+    if (meuGraficoHabitacional) {
+        meuGraficoHabitacional.destroy();
+    }
+    meuGraficoHabitacional = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Faturamento Líquido (R$)',
-                data: data,
-                borderColor: '#2980b9',
-                backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                borderWidth: 2,
-                fill: true
+                label: 'Amortização Principal',
+                data: principalData,
+                borderColor: '#d66800',
+                backgroundColor: 'rgba(214, 104, 0, 0.2)',
+                fill: true,
+                tension: 0.1,
+            }, {
+                label: 'Juros',
+                data: jurosData,
+                borderColor: '#a75000',
+                backgroundColor: 'rgba(167, 80, 0, 0.2)',
+                tension: 0.1,
+                fill: true,
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            plugins: { title: { display: true, text: 'Evolução dos Pagamentos (Principal e Juros)' } },
             scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Mês/Ano'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Valor em R$'
-                    },
-                    beginAtZero: false
-                }
+                x: { title: { display: true, text: 'Meses' } },
+                y: { title: { display: true, text: 'Valor (R$)' }, beginAtZero: true }
             }
         }
     });
 }
 
-function gerarGraficoFaturamentoPorTipo(canvasId, titulo, notas, cor) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    const dadosPorMes = notas.reduce((acc, nf) => {
-        const mesAno = new Date(nf.data).toISOString().slice(0, 7);
-        let valor = parseFloat(nf.valor);
-        if (nf.tipo !== 'devolucao') {
-            valor = valor * 0.90;
-        }
-        acc[mesAno] = (acc[mesAno] || 0) + valor;
-        return acc;
-    }, {});
-    const labels = Object.keys(dadosPorMes).sort();
-    const data = labels.map(mes => dadosPorMes[mes]);
-    if (window[canvasId] instanceof Chart) {
-        window[canvasId].destroy();
+function criarGraficoPizzaHabitacional(valorFinanciado, totalJuros) {
+    const ctx = document.getElementById('proporcao-pizza-grafico').getContext('2d');
+    if (meuGraficoPizzaHabitacional) {
+        meuGraficoPizzaHabitacional.destroy();
     }
-    window[canvasId] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: titulo,
-                data: data,
-                backgroundColor: cor,
-                borderColor: cor,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Mês/Ano'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Valor em R$'
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Performance Veículos
-document.getElementById('vehicle-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const distance = parseFloat(document.getElementById('distance').value);
-    const fuelLiters = parseFloat(document.getElementById('fuel-liters').value);
-    const fuelPrice = parseFloat(document.getElementById('fuel-price').value);
-    const vehicle = document.getElementById('vehicle').value;
-    const vehicleCondition = document.getElementById('vehicle-condition').value;
-    if (!isNaN(distance) && !isNaN(fuelLiters) && !isNaN(fuelPrice) && vehicle && vehicleCondition) {
-        const codigoViagem = gerarCodigoViagem();
-        calcularDesempenhoVeiculo(distance, fuelLiters, fuelPrice, vehicle, vehicleCondition, codigoViagem);
-        this.reset();
-    }
-});
-
-function gerarCodigoViagem() {
-    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let codigo = 'V-';
-    for (let i = 0; i < 8; i++) {
-        codigo += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-    }
-    return codigo;
-}
-
-function calcularDesempenhoVeiculo(distancia, litros, precoCombustivel, veiculo, condicaoVeiculo, codigoViagem) {
-    const custoCombustivel = litros * precoCombustivel;
-    const eficiencia = distancia / litros;
-    const custoPorKm = custoCombustivel / distancia;
-    const novaViagem = {
-        id: Date.now(),
-        veiculo: veiculo,
-        distancia: distancia,
-        eficiencia: eficiencia,
-        custoTotal: custoCombustivel,
-        codigoViagem: codigoViagem
-    };
-    viagens.push(novaViagem);
-    salvarDados();
-    document.getElementById('fuel-cost').textContent = `R$ ${custoCombustivel.toFixed(2)}`;
-    document.getElementById('fuel-efficiency').textContent = `${eficiencia.toFixed(2)} km/L`;
-    document.getElementById('cost-per-km').textContent = `R$ ${custoPorKm.toFixed(2)}`;
-    document.getElementById('code-travel').value = codigoViagem;
-    gerarGraficoComparativoVeiculos();
-    gerarGraficoCustoVeiculos();
-    renderizarTabelaViagens();
-    alert('Desempenho da viagem calculado e salvo!');
-}
-
-function removerViagem(id) {
-    viagens = viagens.filter(viagem => viagem.id !== id);
-    salvarDados();
-    gerarGraficoComparativoVeiculos();
-    gerarGraficoCustoVeiculos();
-    renderizarTabelaViagens();
-}
-
-function renderizarTabelaViagens() {
-    const tabelaBody = document.getElementById('vehicle-table').querySelector('tbody');
-    tabelaBody.innerHTML = '';
-    viagens.forEach(viagem => {
-        const row = tabelaBody.insertRow();
-        row.insertCell(0).textContent = viagem.codigoViagem;
-        row.insertCell(1).textContent = viagem.veiculo;
-        row.insertCell(2).textContent = `${viagem.distancia} km`;
-        row.insertCell(3).textContent = `${viagem.eficiencia.toFixed(2)} km/L`;
-        row.insertCell(4).textContent = `R$ ${viagem.custoTotal.toFixed(2)}`;
-        const acoesCell = row.insertCell(5);
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remover';
-        removeButton.classList.add('remove-btn');
-        removeButton.onclick = () => removerViagem(viagem.id);
-        acoesCell.appendChild(removeButton);
-    });
-}
-
-function gerarGraficoComparativoVeiculos() {
-    const ctx = document.getElementById('vehicle-comparison-chart').getContext('2d');
-    const labels = viagens.map(v => v.veiculo); 
-    const data = viagens.map(v => v.eficiencia);
-    if (window.vehicleComparisonChart instanceof Chart) {
-        window.vehicleComparisonChart.destroy();
-    }
-    window.vehicleComparisonChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Eficiência (Km/L)',
-                data: data,
-                backgroundColor: '#3498db',
-                borderColor: '#2980b9',
-                borderWidth: 1,
-                barPercentage: 0.8,
-                categoryPercentage: 0.8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                datalabels: {
-                    anchor: 'end',
-                    align: 'top',
-                    formatter: (value) => {
-                        return value.toFixed(2) + ' km/L';
-                    },
-                    color: '#000',
-                    font: {
-                        weight: 'bold'
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Eficiência (Km/L)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Veículo'
-                    }
-                }
-            }
-        }
-    });
-}
-
-function gerarGraficoCustoVeiculos() {
-    const ctx = document.getElementById('cost-breakdown-chart').getContext('2d');
-    const ultimoCusto = viagens.length > 0 ? viagens[viagens.length - 1].custoTotal : 0;
-    const custoPedagios = pedagios.reduce((total, p) => total + p.valor, 0);
-    const data = {
-        labels: ['Combustível', 'Pedágios', 'Outros'],
-        datasets: [{
-            data: [ultimoCusto, custoPedagios, 100], 
-            backgroundColor: ['#3498db', '#f1c40f', '#e74c3c'],
-            hoverBackgroundColor: ['#2980b9', '#f39c12', '#c0392b']
-        }]
-    };
-    if (window.costBreakdownChart instanceof Chart) {
-        window.costBreakdownChart.destroy();
-    }
-    window.costBreakdownChart = new Chart(ctx, {
+    meuGraficoPizzaHabitacional = new Chart(ctx, {
         type: 'pie',
-        data: data,
+        data: {
+            labels: ['Valor Financiado', 'Total de Juros'],
+            datasets: [{
+                data: [valorFinanciado, totalJuros],
+                backgroundColor: ['#d66800', '#f8d29b']
+            }]
+        },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw);
-                            return label;
-                        }
-                    }
-                }
-            }
+            plugins: { title: { display: true, text: 'Proporção Financiamento vs. Juros' } }
         }
     });
 }
 
-// Pedágios
-document.getElementById('toll-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const valor = parseFloat(document.getElementById('toll-value').value);
-    const data = document.getElementById('toll-date').value;
-    const veiculo = document.getElementById('toll-vehicle').value;
-    const codigoViagem = document.getElementById('toll-code-travel').value;
-    if (!isNaN(valor) && data && veiculo && codigoViagem) {
-        adicionarPedagio(valor, data, veiculo, codigoViagem);
-        this.reset();
-    }
-});
-
-function adicionarPedagio(valor, data, veiculo, codigoViagem) {
-    const novoPedagio = {
-        id: Date.now(),
-        valor: valor,
-        data: data,
-        veiculo: veiculo,
-        codigoViagem: codigoViagem
-    };
-    pedagios.push(novoPedagio);
-    salvarDados();
-    renderizarPedagios();
-    alert('Pedágio adicionado com sucesso!');
-}
-
-function removerPedagio(id) {
-    pedagios = pedagios.filter(pedagio => pedagio.id !== id);
-    salvarDados();
-    renderizarPedagios();
-}
-
-function renderizarPedagios() {
-    const tabelaBody = document.getElementById('toll-table').querySelector('tbody');
-    tabelaBody.innerHTML = '';
-    let totalPedagios = 0;
-    pedagios.forEach(pedagio => {
-        const row = tabelaBody.insertRow();
-        row.insertCell(0).textContent = pedagio.data;
-        row.insertCell(1).textContent = pedagio.veiculo;
-        row.insertCell(2).textContent = pedagio.codigoViagem;
-        row.insertCell(3).textContent = `R$ ${pedagio.valor.toFixed(2)}`;
-        const acoesCell = row.insertCell(4);
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remover';
-        removeButton.classList.add('remove-btn');
-        removeButton.onclick = () => removerPedagio(pedagio.id);
-        acoesCell.appendChild(removeButton);
-        totalPedagios += pedagio.valor;
-    });
-    document.getElementById('toll-total').textContent = totalPedagios.toFixed(2);
-    salvarDados();
-}
-
-// Clientes
-document.getElementById('client-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const nome = document.getElementById('client-name').value;
-    const cnpj = document.getElementById('client-cnpj').value;
-    const contato = document.getElementById('client-contact').value;
-    if (nome && cnpj && contato) {
-        adicionarCliente(nome, cnpj, contato);
-        this.reset();
-    }
-});
-
-function adicionarCliente(nome, cnpj, contato) {
-    const novoCliente = {
-        id: Date.now(),
-        nome: nome,
-        cnpj: cnpj,
-        contato: contato,
-        dataAdicao: new Date().toISOString().slice(0, 10)
-    };
-    clientes.push(novoCliente);
-    salvarDados();
-    renderizarTabelaClientes();
-    alert('Cliente adicionado com sucesso!');
-}
-
-function removerCliente(id) {
-    clientes = clientes.filter(cliente => cliente.id !== id);
-    salvarDados();
-    renderizarTabelaClientes();
-}
-
-function renderizarTabelaClientes() {
-    const tabelaBody = document.getElementById('client-table').querySelector('tbody');
-    tabelaBody.innerHTML = '';
-    clientes.forEach(cliente => {
-        const row = tabelaBody.insertRow();
-        row.insertCell(0).textContent = cliente.nome;
-        row.insertCell(1).textContent = cliente.cnpj;
-        row.insertCell(2).textContent = cliente.contato;
-        const acoesCell = row.insertCell(3);
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remover';
-        removeButton.classList.add('remove-btn');
-        removeButton.onclick = () => removerCliente(cliente.id);
-        acoesCell.appendChild(removeButton);
-    });
-}
-
-// Funções de Exportação de Dados
-function exportarParaExcel(dados, nomeDoArquivo) {
-    if (dados.length === 0) {
-        alert("Não há dados para exportar.");
+function calcularRenda() {
+    const rendaMensal = unformatNumber(document.getElementById('rendaMensal').value);
+    const dividasFixas = unformatNumber(document.getElementById('dividasFixas').value);
+    const dividasVariaveis = unformatNumber(document.getElementById('dividasVariaveis').value);
+    const investimento = unformatNumber(document.getElementById('investimento').value);
+    if (isNaN(rendaMensal) || isNaN(dividasFixas) || isNaN(dividasVariaveis) || isNaN(investimento) || rendaMensal <= 0) {
+        alert('Por favor, preencha todos os campos com valores válidos.');
         return;
     }
-    const headers = Object.keys(dados[0]);
-    const csvRows = [];
-    csvRows.push(headers.join(';'));
-    for (const row of dados) {
-        const values = headers.map(header => {
-            const value = row[header];
-            let formattedValue = String(value).replace(/;/g, ',').replace(/\n/g, '').replace(/"/g, '""');
-            if (formattedValue.includes(',') || !isNaN(value)) {
-                formattedValue = `"${formattedValue}"`;
-            }
-            return formattedValue;
-        });
-        csvRows.push(values.join(';'));
-    }
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `${nomeDoArquivo}_${new Date().toISOString().slice(0, 10)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const gastosTotais = dividasFixas + dividasVariaveis + investimento;
+    const superavit = rendaMensal - gastosTotais;
+    exibirResultadosRenda(rendaMensal, gastosTotais, superavit);
+    criarGraficoRenda(rendaMensal, gastosTotais, dividasFixas, dividasVariaveis, investimento);
+    generateGuidance('renda', { rendaMensal, gastosTotais, superavit });
+}
+
+function exibirResultadosRenda(rendaMensal, gastosTotais, superavit) {
+    document.getElementById('resultado-renda').textContent = `R$ ${formatarResultado(rendaMensal)}`;
+    document.getElementById('resultado-gastos').textContent = `R$ ${formatarResultado(gastosTotais)}`;
+    const superavitElement = document.getElementById('resultado-superavit');
+    superavitElement.textContent = `R$ ${formatarResultado(Math.abs(superavit))}`;
+    if (superavit < 0) {
+        superavitElement.style.color = 'red';
+        superavitElement.textContent = `DÉFICIT R$ ${formatarResultado(Math.abs(superavit))}`;
+    } else if (superavit > 0) {
+        superavitElement.style.color = 'green';
+        superavitElement.textContent = `SUPERÁVIT R$ ${formatarResultado(superavit)}`;
+    } else {
+        superavitElement.style.color = 'gray';
+        superavitElement.textContent = `R$ ${formatarResultado(superavit)}`;
     }
 }
 
-// Event Listeners para os botões de download
-document.getElementById('download-nf-excel').addEventListener('click', () => {
-    exportarParaExcel(notasFiscais, 'NotasFiscais');
-});
-document.getElementById('download-vehicle-excel').addEventListener('click', () => {
-    exportarParaExcel(viagens, 'PerformanceVeiculos');
-});
-document.getElementById('download-toll-excel').addEventListener('click', () => {
-    exportarParaExcel(pedagios, 'HistoricoPedagios');
-});
-document.getElementById('download-client-excel').addEventListener('click', () => {
-    exportarParaExcel(clientes, 'ListaClientes');
-});
+function criarGraficoRenda(rendaMensal, gastosTotais, dividasFixas, dividasVariaveis, investimento) {
+    const ctxBar = document.getElementById('renda-bar-grafico').getContext('2d');
+    const ctxPie = document.getElementById('renda-pizza-grafico').getContext('2d');
+
+    if (meuGraficoRendaBar) { meuGraficoRendaBar.destroy(); }
+    if (meuGraficoRendaPizza) { meuGraficoRendaPizza.destroy(); }
+    
+    meuGraficoRendaBar = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: ['Renda Mensal', 'Gastos Totais'],
+            datasets: [{
+                label: 'Comparativo',
+                data: [rendaMensal, gastosTotais],
+                backgroundColor: ['#d66800', '#a75000']
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Valor (R$)' } }
+            },
+            plugins: { title: { display: true, text: 'Renda Líquida vs. Gastos Totais' } }
+        }
+    });
+
+    meuGraficoRendaPizza = new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: ['Dívidas Fixas', 'Dívidas Variáveis', 'Investimento', 'Superávit/Déficit'],
+            datasets: [{
+                data: [dividasFixas, dividasVariaveis, investimento, rendaMensal - gastosTotais],
+                backgroundColor: ['#d66800', '#a75000', '#f8d29b', '#6c757d']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { title: { display: true, text: 'Distribuição da Renda' } }
+        }
+    });
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulações Financeiras</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <a href="index.html" class="back-link">&lt; Voltar</a>
+        <h1>Ambiente de Simulação</h1>
+    </header>
+
+    <main class="main-content-lateral">
+        <section class="menu-section">
+            <h2>Selecione uma simulação</h2>
+            <nav class="menu">
+                <ul>
+                    <li><a href="#" class="menu-item" data-simulation="emprestimo">Empréstimo</a></li>
+                    <li><a href="#" class="menu-item" data-simulation="habitacional">Habitacional</a></li>
+                    <li><a href="#" class="menu-item" data-simulation="renda">Renda</a></li>
+                </ul>
+            </nav>
+        </section>
+
+        <section class="simulation-section">
+            <div id="simulation-content">
+                </div>
+        </section>
+    </main>
+
+    <button class="guidance-btn" id="show-guidance-btn">
+        <img src="money-character.png" alt="Personagem de dinheiro divertido" class="character-icon">
+        <span class="guidance-text">Orientações</span>
+    </button>
+    <div class="guidance-modal" id="guidance-modal">
+        <div class="modal-header">
+            <h3>Orientação Financeira</h3>
+            <button class="close-btn" id="close-guidance-btn">&times;</button>
+        </div>
+        <div class="modal-content">
+            <p id="guidance-text"></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
